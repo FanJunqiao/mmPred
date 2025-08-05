@@ -22,8 +22,8 @@ from utils.demo_visualize import demo_visualize
 from tensorboardX import SummaryWriter
 
 # stage 1
-from Point_models.mmwave_point_transformer_origin import PointTransformerReg
-from Point_models.p4Transformer_encode import P4Transformer
+from FDM_models.mmwave_point_transformer_mmfi import PointTransformerReg
+from FDM_models.mmwave_P4Transformer_mmBody import P4Transformer
 
 # stage 2
 
@@ -32,8 +32,8 @@ from models.humanMAC_transformer import MotionTransformer
 
 from models.PSGCN.model import GCN
 
-from models.mamba_simple_kalman import ModelArgs ### no robust config
-from models.MambaTransendBase_trans_time_mmfi import Mamba ###  test implementation
+from models.GST_utils import ModelArgs ### no robust config
+from models.GST_mmfi import GST ###  test implementation
 
 
 
@@ -61,7 +61,7 @@ def setup():
     parser.add_argument('--save_model_interval', type=int, default=50)
     parser.add_argument('--save_gif_interval', type=int, default=10)
     parser.add_argument('--save_metrics_interval', type=int, default=50)
-    parser.add_argument('--ckpt', type=str, default='../ckpt/ckpt_ema_mmfi.pt')
+    parser.add_argument('--ckpt', type=str, default='./ckpt/ckpt_ema_mmfi.pt')
     parser.add_argument('--ema', type=bool, default=True)
     parser.add_argument('--vis_switch_num', type=int, default=10)
     parser.add_argument('--vis_col', type=int, default=5)
@@ -122,20 +122,15 @@ if __name__ == '__main__':
         if args.diffusion == True:
             diffusion = create_diffusion(cfg)
 
-            expand = 1
-            mambaArgs = ModelArgs(d_model= 512// expand,
-                                num_T_in_M_layers=cfg.num_T_in_M_layers,
-                                num_T_in_M_head=cfg.num_T_in_M_head,
+            GSTArgs = ModelArgs(d_model= 512,
+                                num_F_in_J_layers=cfg.num_F_in_J_layers,
+                                num_F_in_J_head=cfg.num_F_in_J_head,
                                 n_layer = 4, 
-                                temp_emb_dim= cfg.latent_dims // expand, 
-                                vocab_length=cfg.n_pre, 
-                                cond_length=cfg.n_pre_cond,
-                                vocab_size= 3 * cfg.joint_num,
-                                d_state=16,
+                                temp_emb_dim= cfg.latent_dims, 
                                 cfg=cfg,
                                 dropout=cfg.dropout, 
-                                expand=expand)
-            model = Mamba(mambaArgs).to(cfg.device)
+                                expand=1)
+            model = GST(GSTArgs).to(cfg.device)
         else:
             upJ = np.array([8,9,10,11,12,13,14,15])
             downJ = np.array([0,1,2,3,4,5,6])
@@ -161,13 +156,14 @@ if __name__ == '__main__':
             print("Running ", args.mode)
             print(f"csv saving to {cfg.result_dir}")
             ckpt = torch.load(args.ckpt)
+            print(args.ckpt)
             model.load_state_dict(ckpt)
             model.eval()
             print("Model complete.")
 
             if args.diffusion == True:
                 np.random.seed(5)
-                plot_indexes = np.random.choice(range(0,3024), size=100, replace=False)
+                plot_indexes = np.random.choice(range(0,3024), size=1, replace=False)
                 demo_visualize(args.mode, cfg, model, diffusion, test_dataset_list, plot_indexes=plot_indexes) #818(wave), 368(raise), 2087(throw), 1145(dun), 1648(bend) 
 
                 compute_stats(diffusion, test_dataset_list, model, logger, cfg, multiFlag=args.multiFlag)

@@ -36,7 +36,7 @@ def compute_stats(diffusion, test_dataset_list, model, logger, cfg, mask=None, m
         traj_est = traj_est.cpu()
         return traj_est
 
-    partition = [3,6,9,12,16]
+    partition = [10]
     scenes = list(range(1,8)) if cfg.dataset == "mmBody" else [2,3,4,5,13,14,17,18,19,20,21,22,23,27]
     metrics = ['ADE', 'FDE', "R-ADE", "R-FDE"]
     stats_names = ['APD', "limb_err", "limb_var","jit_err", "jit_var"]

@@ -88,7 +88,10 @@ class P4Transformer(nn.Module):
 
 
     def forward(self, radar):    #, print_depth=None, print_radar=None
-        print(radar.shape)
+
+        '''
+        Radar PC encoder
+        '''
         temp_start_time = time.time()
         point_cloud = radar[:, :, :, :3]
         point_fea = radar[:, :, :, 3:].permute(0, 1, 3, 2)                                                                                                           # [B, L, N, 3]
@@ -104,43 +107,43 @@ class P4Transformer(nn.Module):
             xyzt = torch.cat(tensors=(xyz, t), dim=2)
             xyzts.append(xyzt)
         xyzts = torch.stack(tensors=xyzts, dim=1)
-        print(xyzts.shape, features.shape)
 
         xyzts = torch.reshape(input=xyzts, shape=(xyzts.shape[0], xyzts.shape[1]*xyzts.shape[2], xyzts.shape[3]))                           # [B, L*n, 4]
 
         features = features.permute(0, 1, 3, 2)                                                                                             # [B, L,   n, C]
         features = torch.reshape(input=features, shape=(features.shape[0], features.shape[1]*features.shape[2], features.shape[3]))         # [B, L*n, C]
 
-        print(xyzts.shape, features.shape)
-        
+        '''
+        anchor xyzt encoding
+        '''
         xyzts_embd = self.pos_embedding(xyzts.permute(0, 2, 1)).permute(0, 2, 1)
 
         embedding = xyzts_embd + features
-        radar_feature = features
-        radar_position = xyzts
-
-        mid_time1 = time.time()
-        # open for template embedding
-        # joint_embedding = self.joint_template.expand(radar.shape[0], -1, -1) + self.joint_posembeds_vector
+        
+        
+        '''
+        Joint template construction and concatenation
+        '''
         joint_embedding = self.joint_template.expand(radar.shape[0], -1, -1) + self.joint_posembeds_vector
         embedding = torch.cat([joint_embedding, embedding], dim=1)
-
-        # print_anchors(radar_position, radar)
         
 
         if self.emb_relu:
             embedding = self.emb_relu(embedding)
 
-
+        '''
+        Transformer-based Learning
+        '''
         # open for template embedding
         output = self.transformer(embedding)
         joint_embedding = output[:, :self.joint_num, :]
         joint_embedding = self.dim_reduce_head(joint_embedding)
-        mid_time2 = time.time()
-        joint_embed_out = joint_embedding
+        
+        '''
+        Project to DCT domain representation
+        '''
         output = self.point_prediction_heads(joint_embedding)
-        output_var = torch.exp(self.var_prediction_heads(joint_embedding))
-        final_time = time.time()
+
 
 
 

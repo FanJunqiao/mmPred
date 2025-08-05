@@ -194,6 +194,9 @@ class PointTransformerReg(nn.Module):
         x = radar
         b, t, n, c = x.shape
 
+        '''
+        PC encoder
+        '''
         t_idx = torch.arange(t, device=x.device).float().view(1, t, 1, 1).expand(b, t, n, 1)
         xyzt = torch.cat([x[..., :3], t_idx], dim=-1)
         xyzt = xyzt.reshape(b,t*n,4)
@@ -202,12 +205,21 @@ class PointTransformerReg(nn.Module):
         points, _ = self.backbone(x.reshape(b*t,n,c))
         points = points.reshape(b,t,n,-1).reshape(b,t*n,-1)
         
+        '''
+        anchor xyzt encoding
+        '''
         xyzt_emb = self.xyzt_pos_emb(xyzt.permute(0,2,1)).permute(0,2,1)
         
         points = points + xyzt_emb
         
+        '''
+        Joint Template Init
+        '''
         joint_embedding = self.joint_posembeds_vector.repeat(points.size()[0],1,1)
         embedding = torch.cat([joint_embedding, points], dim=1)
+        '''
+        Transformer
+        '''
         output = self.transformer(embedding)[:, :self.n_p, :]
 
         feat = self.fc2(output)

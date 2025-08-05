@@ -112,29 +112,6 @@ def set_dataloader_mmfi(cfg):
     
     return train_loader, val_loader, test_dataset_list
 
-def set_dataloader_MMVR(cfg):
-    data_dir = cfg.data_dir
-    output_dir = f'{cfg.output_dir}'
-    input_n = cfg.t_his
-    output_n = cfg.t_pred
-    joint_n = cfg.joint_n
-    skip_rate = cfg.skip_rate_train
-
-    all_data = True if cfg.data_all == 'all' else False
-
-    val_dataset_list = []
-    test_dataset_list = []
-    
-    for miss_type_test in cfg.miss_type_test:
-        test_dataset = MMVR(input_n, output_n, split=2,
-                        miss_type=cfg.miss_type_train)
-        test_dataset_list.append(test_dataset)
-    
-    print('>>> Training dataset length: {:d}'.format(test_dataset.__len__()))
-    # test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=16,
-    #                             pin_memory=True)
-    
-    return None, None, test_dataset_list
 
 def get_multimodal_gt_full(logger, dataset_multi_test_list, args, cfg, multiFlag=True):
     """

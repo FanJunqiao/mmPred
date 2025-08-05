@@ -114,8 +114,8 @@ class Config:
         self.scheduler = cfg['scheduler']
 
         self.num_layers = cfg['num_layers']
-        self.num_T_in_M_layers = cfg['num_T_in_M_layers']
-        self.num_T_in_M_head = cfg['num_T_in_M_head']
+        self.num_F_in_J_layers = cfg['num_F_in_J_layers']
+        self.num_F_in_J_head = cfg['num_F_in_J_head']
         self.latent_dims = cfg['latent_dims']
         self.dropout = cfg['dropout']
         self.num_heads = cfg['num_heads']

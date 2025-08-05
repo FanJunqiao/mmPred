@@ -1,5 +1,5 @@
 import torch
-from models.mamba_simple_jointscan import *
+from models.GST_utils import *
 from models.MotionTransformer import *
 import copy
 from einops import rearrange, repeat, einsum
@@ -29,9 +29,8 @@ def timestep_embedding(timesteps, dim, max_period=10000):
     return embedding
 
 
-class Mamba(nn.Module):
+class GST(nn.Module):
     def __init__(self, args: ModelArgs):
-        """My Mamba model."""
         super().__init__()
         self.args = args
         print(self.args.d_model, self.args.temp_emb_dim)
@@ -79,11 +78,9 @@ class Mamba(nn.Module):
                     num_head=8,
                     dropout=self.args.dropout,
                 ) for _ in range(args.n_layer)])
-        # self.layer_T = nn.ModuleList([ResidualBlock(args, self.trans_latent) for _ in range(args.n_layer)])
         self.layer_T = nn.ModuleList()
         for i in range(self.args.n_layer):
             self.layer_T.append(
-                # ResidualBlock(args, self.trans_latent)
                 TemporalDiffusionTransformerDecoderLayer(
                     latent_dim=self.trans_latent,
                     time_embed_dim=self.args.temp_emb_dim,
@@ -144,18 +141,13 @@ class Mamba(nn.Module):
                 motion_pred = None, motion_feat = None,
                 pose_var=None,
                 return_attn = False):
-        """
-        Args:
-            input_ids (long tensor): shape (b, l)    (See Glossary at top for definitions of b, l, d_in, n...)
+
     
-        Returns:
-            logits: shape (b, l, vocab_size)
-
-        Official Implementation:
-            class MambaLMHeadModel, https://github.com/state-spaces/mamba/blob/main/mamba_ssm/models/mixer_seq_simple.py#L173
-
-        """
-
+    
+        '''
+        Input Projection and Positional Embedding
+        '''
+        
         B, T, C = x.shape
         J = C//3
         x = x.reshape(B,T,J,3)
@@ -164,10 +156,16 @@ class Mamba(nn.Module):
         b,t,v,c = h.shape
 
 
-
+        '''
+        Diffusion Time-step Embedding
+        '''
         emb = self.time_embed_base(timestep_embedding(timesteps, self.args.d_model)).unsqueeze(dim=1)
         emb_T = emb
         emb_M = emb
+        
+        '''
+        Dual-domain feature fusion
+        '''
         
         loss_aux = None
         if mod is not None:
@@ -187,7 +185,9 @@ class Mamba(nn.Module):
 
             
 
-            
+        '''
+        U-Net architecture
+        '''
         attn_list = []
         
         i = 0
@@ -196,6 +196,9 @@ class Mamba(nn.Module):
             if i < (self.args.n_layer // 2):
                 prelist.append(h)
 
+                '''
+                Reshape for S-Transformer
+                '''
                 h = h.permute(0, 2, 1, 3).reshape(b,v,t*c)
                 if return_attn:
                     h, attn = layer_M(h, emb_M, return_attn=return_attn)
@@ -204,12 +207,20 @@ class Mamba(nn.Module):
                     h = layer_M(h, emb_M, return_attn=return_attn)
                 h = h.view(b,v,t,c).permute(0,2,1,3)
 
+
+                '''
+                Reshape for F-Transformer
+                '''
                 h = h.reshape(b,t,v*c)
                 h = self.layer_T[i](h, emb_T)
                 h = h.view(b,t,v,c)
                 
             elif i >= (self.args.n_layer // 2):
 
+
+                '''
+                Reshape for S-Transformer
+                '''
                 h = h.permute(0, 2, 1, 3).reshape(b,v,t*c)
                 if return_attn:
                     h, attn = layer_M(h, emb_M, return_attn=return_attn)
@@ -218,6 +229,9 @@ class Mamba(nn.Module):
                     h = layer_M(h, emb_M, return_attn=return_attn)
                 h = h.view(b,v,t,c).permute(0,2,1,3)
 
+                '''
+                Reshape for F-Transformer
+                '''
                 h = h.reshape(b,t,v*c)
                 h = self.layer_T[i](h, emb_T)
                 h = h.view(b,t,v,c)
@@ -227,10 +241,6 @@ class Mamba(nn.Module):
             i += 1
 
 
-        # output head
-        # h = h.view(b,t,v*c)
-        # h = self.norm_f(h)
-        # h = h.view(b,t,v,c)
         logits = self.lm_head(h)
         logits = logits.reshape(B,T,C).contiguous()
 

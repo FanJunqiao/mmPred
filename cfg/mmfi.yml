@@ -17,8 +17,8 @@ ddim_timesteps: 100
 refine_timesteps: 0
 scheduler: 'Cosine' # 'Cosine' 'Linear' 'Sqrt' 'Sigmoid'
 num_layers: 4
-num_T_in_M_layers: 1
-num_T_in_M_head: 4
+num_F_in_J_layers: 1
+num_F_in_J_head: 4
 num_heads: 4
 latent_dims: 384
 dropout: 0.2

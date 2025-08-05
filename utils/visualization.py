@@ -20,7 +20,7 @@ from utils.skeleton import Skeleton
 
 
 def render_animation(cfg, poses_generator, algos, t_hist, fix_0=True, azim=0.0, output=None, mode='pred', size=2, ncol=5,
-                     bitrate=3000, fix_index=None):
+                     bitrate=3000, fix_index=None, radar_pc=None):
     """
     TODO
     Render an animation. The supported output modes are:
@@ -76,6 +76,8 @@ def render_animation(cfg, poses_generator, algos, t_hist, fix_0=True, azim=0.0, 
     ax_3d = []
     lines_3d = []
     trajectories = []
+    radar_scatter = None  # Will hold the radar point cloud scatter object
+
     radius = 1.7
     for index, (title, data) in enumerate(poses.items()):
         # if index >= 2:
@@ -149,6 +151,17 @@ def render_animation(cfg, poses_generator, algos, t_hist, fix_0=True, azim=0.0, 
             # ax.plot([0, 0],
             #         [0, 0],
             #         [0, 0.1], c='b')
+            
+            # Draw radar point cloud on subplot (0,0)
+            if radar_pc is not None and n == 0:
+                pc_plot = fuse_radar_pc_temporally(radar_pc)
+                nonlocal radar_scatter
+                if radar_scatter is not None:
+                    radar_scatter.remove()  # remove old frame
+                points = pc_plot[i, :, :3]  # T, N, 3 (x,y,z)
+                radar_scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c='blue', s=5, alpha=0.8)
+            
+            
         if not initialized:
 
             for j, j_parent in enumerate(parents):
@@ -326,3 +339,24 @@ def render_animation(cfg, poses_generator, algos, t_hist, fix_0=True, azim=0.0, 
     plt.close()
     
     # save_figs()
+    
+    
+def fuse_radar_pc_temporally(pc, window=4):
+    """
+    Fuse adjacent frames of radar point clouds along time axis.
+
+    Args:
+        pc: np.ndarray of shape (T, N, C) -- radar PC with T frames
+        window: int, number of frames to concatenate
+
+    Returns:
+        fused_pc: np.ndarray of shape (T - window + 1, N * window, C)
+    """
+    T, N, C = pc.shape
+    fused = []
+    for i in range(T - window + 1):
+        # Slice frames [i, i+1, ..., i+window-1]
+        segment = pc[i:i+window]        # (window, N, C)
+        segment = segment.reshape(-1, C)  # (window * N, C)
+        fused.append(segment)
+    return np.stack(fused)  # shape: (T - window + 1, N * window, C)

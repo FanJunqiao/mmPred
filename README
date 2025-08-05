@@ -1,0 +1,58 @@
+# mmPred
+
+mmPred is a radar-based human motion prediction framework. This README provides instructions for data preparation, environment setup, and running the two-stage pipeline. 
+
+## 1. Data Preparation
+
+- Download the mmFi dataset from [this link](https://drive.google.com/file/d/1fSLSKvyG27_tmHzY5xlcG56OGJJDllj_/view?usp=drive_link).
+- Extract the contents so that the folder structure is:
+    ```
+    ./data/
+        └── data_mmfi/
+                └── stage_1_process/
+                        (files...)
+                    (files...)
+    ```
+- Download two checkpoints from [this link](https://drive.google.com/file/d/1-5JruNUc-ekhfP-YB4k9p_ZdUHwJt1TI/view?usp=sharing).
+- Place the checkpoints in the `./ckpt` directory.
+
+## 2. Environment Setup
+
+
+The code has been developed and tested with the following environment:
+
+- Python 3.8.2
+- PyTorch 1.8.1
+- CUDA 11.6
+
+To install the required dependencies, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+## 3. Two-Stage Running
+
+### Stage 1: FDM
+
+Train and test the FDM model:
+
+```bash
+python main_mmwave.py --mode train_mmfi --train_stage 1
+python main_mmwave.py --mode test_mmfi --train_stage 1
+```
+
+### Stage 2: Diffusion-based Radar-based Human Motion Prediction
+
+Train and test the diffusion-based model:
+
+```bash
+python main_mmwave.py --mode train_mmfi --train_stage 2
+python main_mmwave.py --mode test_mmfi --train_stage 2
+```
+
+
+## 4. Results and Visualization
+
+- Inference quantitative results are saved in `./inference/test_mmfi_exp_0/results/stats.csv`. ADE10 and FDE10 are the ADE and FDE for the predicted 10 frames. ADEs_ are the score for each sub-actions. 
+- Visualizations can be found in the `test_vis_mmfi` directory.
